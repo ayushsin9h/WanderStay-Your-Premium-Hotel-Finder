@@ -89,10 +89,22 @@ def main():
                 csv_writer = csv.writer(csvfile)
                 csv_writer.writerow(['User Input', 'Chatbot Response', 'Timestamp'])
 
-        # Using a static key to prevent input focus loss
-        user_input = st.text_input("You:", key="user_input_main")
+        # --- UPDATED INPUT FORM WITH BUTTON ---
+        # We use st.form to group the input and the button together
+        with st.form(key='chat_form'):
+            # Create columns to put the button next to the input (optional layout)
+            col1, col2 = st.columns([8, 1])
+            
+            with col1:
+                user_input = st.text_input("You:", key="user_input_main")
+            
+            with col2:
+                # This aligns the button with the input box
+                st.write("") 
+                st.write("")
+                submit_button = st.form_submit_button(label='Send')
 
-        if user_input:
+        if submit_button and user_input:
             user_input_str = str(user_input)
             response = chatbot(user_input)
             
