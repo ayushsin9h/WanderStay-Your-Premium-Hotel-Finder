@@ -9,9 +9,11 @@ import random
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
+# --- 1. CONFIGURATION & SETUP ---
+# Fix SSL context for Mac/Legacy systems to ensure NLTK downloads work
 ssl._create_default_https_context = ssl._create_unverified_context
 
-
+# NLTK setup: path configuration and download
 nltk.data.path.append(os.path.abspath("nltk_data"))
 try:
     nltk.data.find('tokenizers/punkt')
