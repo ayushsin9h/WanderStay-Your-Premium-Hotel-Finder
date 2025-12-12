@@ -9,23 +9,23 @@ import random
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
-# Fix SSL context for Mac/Legacy systems
 ssl._create_default_https_context = ssl._create_unverified_context
 
-# NLTK setup
+
 nltk.data.path.append(os.path.abspath("nltk_data"))
 try:
     nltk.data.find('tokenizers/punkt')
 except LookupError:
     nltk.download('punkt')
 
-# --- CACHING THE MODEL TRAINING ---
-# We use @st.cache_resource so the model doesn't retrain on every user interaction
+# --- 2. MODEL TRAINING & LOADING (CACHED) ---
+# We use @st.cache_resource to ensure the model runs fast and doesn't retrain on every click
 @st.cache_resource
 def load_and_train_model():
+    # Defines path to patterns.json based on current directory
     file_path = os.path.abspath("./patterns.json")
     
-    # Check if file exists to prevent crash
+    # Safety check: Ensure the dataset exists
     if not os.path.exists(file_path):
         st.error(f"Error: 'patterns.json' not found at {file_path}. Please ensure the file exists.")
         st.stop()
@@ -33,18 +33,20 @@ def load_and_train_model():
     with open(file_path, "r") as file:
         data = json.load(file)
     
-    # Handle both list format and dictionary format {"intents": [...]}
+    # Handle different JSON structures (list vs dict)
     if isinstance(data, dict) and 'intents' in data:
         intents = data['intents']
     else:
         intents = data
 
+    # vectorizer and classifier initialization
     vectorizer = TfidfVectorizer(ngram_range=(1, 4))
     clf = LogisticRegression(random_state=0, max_iter=10000)
 
     tags = []
     patterns = []
     
+    # Extract data for training
     for intent in intents:
         for pattern in intent['patterns']:
             tags.append(intent['tag'])
@@ -54,15 +56,17 @@ def load_and_train_model():
         st.error("Error: No patterns found in JSON to train the model.")
         st.stop()
 
+    # Train the model
     x = vectorizer.fit_transform(patterns)
     y = tags
     clf.fit(x, y)
     
     return vectorizer, clf, intents
 
-# Load model and data
+# Load the trained model globally
 vectorizer, clf, intents = load_and_train_model()
 
+# --- 3. CHATBOT RESPONSE FUNCTION ---
 def chatbot(input_text):
     input_vector = vectorizer.transform([input_text])
     tag = clf.predict(input_vector)[0]
@@ -73,65 +77,70 @@ def chatbot(input_text):
             return response
     return "I'm not sure I understand."
 
+# --- 4. MAIN APPLICATION ---
 def main():
     st.title("WanderStay, a premium hotel finder of INDIA")
 
+    # Sidebar Menu
     menu = ["Home", "Conversation History", "About"]
     choice = st.sidebar.selectbox("Menu", menu)
 
-    # --- HOME MENU ---
+    # --- HOME SECTION ---
     if choice == "Home":
         st.write("Welcome to WanderStay, your one stop solution for finding famous hotels in INDIA. Please kindly search for hotels in state wise or UT wise format like:- 'Recommend some best-rated hotels to rent in Goa', and then press Enter to start the conversation.")
 
-        # Check if chat_log exists
+        # Ensure chat log file exists
         if not os.path.exists('chat_log.csv'):
             with open('chat_log.csv', 'w', newline='', encoding='utf-8') as csvfile:
                 csv_writer = csv.writer(csvfile)
                 csv_writer.writerow(['User Input', 'Chatbot Response', 'Timestamp'])
 
-        # --- UPDATED INPUT FORM WITH BUTTON ---
-        # We use st.form to group the input and the button together
-        with st.form(key='chat_form'):
-            # Create columns to put the button next to the input (optional layout)
+        # --- UPDATED INPUT FORM WITH SEND BUTTON ---
+        # This fixes the mobile usability issue by providing a clear "Send" button
+        with st.form(key='chat_form', clear_on_submit=True):
             col1, col2 = st.columns([8, 1])
             
             with col1:
+                # The input box with your original label
                 user_input = st.text_input("You:", key="user_input_main")
             
             with col2:
-                # This aligns the button with the input box
+                # Spacer to align button with text box
                 st.write("") 
                 st.write("")
                 submit_button = st.form_submit_button(label='Send')
 
+        # Logic to handle user input
         if submit_button and user_input:
             user_input_str = str(user_input)
             response = chatbot(user_input)
             
+            # Display response in a text area
             st.text_area("Chatbot:", value=response, height=120, max_chars=None, key="chatbot_response_area")
 
+            # Log conversation
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
             with open('chat_log.csv', 'a', newline='', encoding='utf-8') as csvfile:
                 csv_writer = csv.writer(csvfile)
                 csv_writer.writerow([user_input_str, response, timestamp])
 
+            # Handle exit commands
             if response.lower() in ['goodbye', 'bye']:
                 st.write("Thank you for chatting with me. Have a great JOURNEY ahead!")
                 st.stop()
 
-    # --- CONVERSATION HISTORY MENU ---
+    # --- HISTORY SECTION ---
     elif choice == "Conversation History":
         st.header("Conversation History")
         
-        # Check if file exists before reading
+        # Read from the CSV log file
         if os.path.exists('chat_log.csv'):
             with open('chat_log.csv', 'r', encoding='utf-8') as csvfile:
                 csv_reader = csv.reader(csvfile)
                 next(csv_reader, None)  # Skip header safely
                 
                 for row in csv_reader:
-                    if len(row) >= 3: # Ensure row has data
+                    if len(row) >= 3: # Ensure row has valid data
                         st.text(f"User: {row[0]}")
                         st.text(f"Chatbot: {row[1]}")
                         st.text(f"Timestamp: {row[2]}")
@@ -139,7 +148,7 @@ def main():
         else:
             st.write("No conversation history found.")
 
-    # --- ABOUT MENU ---
+    # --- ABOUT SECTION ---
     elif choice == "About":
         st.write("The main goal of making WanderStay is to assist people in India by serving as a personalized, intelligent travel assistant for finding hotels across states and union territories")
 
