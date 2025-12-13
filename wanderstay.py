@@ -89,7 +89,7 @@ def main():
 
     # --- HOME SECTION ---
     if choice == "Home":
-        st.write("Welcome to WanderStay, your one stop solution for finding famous hotels in INDIA. Please kindly search for hotels in state wise or UT wise format like:- 'Recommend some best-rated hotels to rent in Goa', and then press the send buttom to start the conversation.")
+        st.write("Welcome to WanderStay, your one stop solution for finding famous hotels in INDIA. Please kindly search for hotels in state wise or UT wise format like:- 'Recommend some best-rated hotels to rent in Goa', and then press the arrow buttom to start the conversation.")
         # Ensure chat log file exists
         if not os.path.exists('chat_log.csv'):
             with open('chat_log.csv', 'w', newline='', encoding='utf-8') as csvfile:
@@ -184,4 +184,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
