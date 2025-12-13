@@ -89,44 +89,49 @@ def main():
 
     # --- HOME SECTION ---
     if choice == "Home":
-        st.write("Welcome to WanderStay, your one stop solution for finding famous hotels in INDIA. Please kindly search for hotels in state wise or UT wise format like:- 'Recommend some best-rated hotels to rent in Goa', and then press Enter to start the conversation.")
-
+        st.write("Welcome to WanderStay, your one stop solution for finding famous hotels in INDIA. Please kindly search for hotels in state wise or UT wise format like:- 'Recommend some best-rated hotels to rent in Goa', and then press the send buttom to start the conversation.")
         # Ensure chat log file exists
         if not os.path.exists('chat_log.csv'):
             with open('chat_log.csv', 'w', newline='', encoding='utf-8') as csvfile:
                 csv_writer = csv.writer(csvfile)
                 csv_writer.writerow(['User Input', 'Chatbot Response', 'Timestamp'])
 
-        # --- UPDATED INPUT FORM WITH SEND BUTTON ---
-        # This fixes the mobile usability issue by providing a clear "Send" button
-        with st.form(key='chat_form', clear_on_submit=True):
-            col1, col2 = st.columns([8, 1])
-            
-            with col1:
-                # The input box with your original label
-                user_input = st.text_input("You:", key="user_input_main")
-            
-            with col2:
-                # Spacer to align button with text box
-                st.write("") 
-                st.write("")
-                submit_button = st.form_submit_button(label='Send')
+        # Initialize chat history in session state if it doesn't exist
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
 
-        # Logic to handle user input
-        if submit_button and user_input:
-            user_input_str = str(user_input)
-            response = chatbot(user_input)
-            
-            # Display response in a text area
-            st.text_area("Chatbot:", value=response, height=120, max_chars=None, key="chatbot_response_area")
+        # Display chat messages from history on app rerun
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-            # Log conversation
+        # Accept user input (Modern Chat Input)
+        if prompt := st.chat_input("Type your message here..."):
+            
+            # 1. Display user message
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            
+            # 2. Add user message to history
+            st.session_state.messages.append({"role": "user", "content": prompt})
+
+            # 3. Generate response
+            response = chatbot(prompt)
+
+            # 4. Display assistant response
+            with st.chat_message("assistant"):
+                st.markdown(response)
+            
+            # 5. Add assistant response to history
+            st.session_state.messages.append({"role": "assistant", "content": response})
+
+            # 6. Log to CSV
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             with open('chat_log.csv', 'a', newline='', encoding='utf-8') as csvfile:
                 csv_writer = csv.writer(csvfile)
-                csv_writer.writerow([user_input_str, response, timestamp])
+                csv_writer.writerow([prompt, response, timestamp])
 
-            # Handle exit commands
+            # 7. Handle exit commands
             if response.lower() in ['goodbye', 'bye']:
                 st.write("Thank you for chatting with me. Have a great JOURNEY ahead!")
                 st.stop()
@@ -179,3 +184,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
